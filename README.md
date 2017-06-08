@@ -1,2 +1,2 @@
 # jutil
-Helper functions
+Some helper functions I used in my codes
