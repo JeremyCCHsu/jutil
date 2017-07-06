@@ -6,6 +6,56 @@ import tensorflow as tf
 EPSILON = tf.constant(1e-6, dtype=tf.float32)
 PI = tf.constant(pi, dtype=tf.float32)
 
+
+def nchw_to_nhwc(x):
+    return tf.transpose(x, [0, 2, 3, 1])
+
+
+def nhwc_to_nchw(x):
+    return tf.transpose(x, [0, 3, 1, 2])
+
+def Layernorm(x, axis, name):
+    '''
+    Layer normalization (Ba, 2016)
+    J: Z-normalization using all nodes of the layer on a per-sample basis.
+
+    Input:
+        `x`: channel_first/NCHW format! (or fully-connected)
+        `axis`: list
+        `name`: must be assigned
+    
+    Example:
+        # axis = [1, 2, 3]
+        # x = tf.random_normal([64, 3, 10, 10])
+        # name = 'D_layernorm'
+    
+    Return:
+        (x - u)/s * scale + offset
+
+    Source: 
+        https://github.com/igul222/improved_wgan_training/blob/master/tflib/ops/layernorm.py
+    '''
+    mean, var = tf.nn.moments(x, axis, keep_dims=True)
+    n_neurons = x.get_shape().as_list()[axis[0]]
+    offset = tf.get_variable(
+        name+'.offset',
+        shape=[n_neurons] + [1 for _ in range(len(axis) -1)],
+        initializer=tf.zeros_initializer
+    )
+    scale = tf.get_variable(
+        name+'.scale',
+        shape=[n_neurons] + [1 for _ in range(len(axis) -1)],
+        initializer=tf.ones_initializer
+    )
+    return tf.nn.batch_normalization(x, mean, var, offset, scale, 1e-5)
+
+
+def selu(x):
+    with tf.name_scope('selu'):
+        alpha = 1.6732632423543772848170429916717
+        scale = 1.0507009873554804934193349852946
+        return scale*tf.where(x>=0.0, x, alpha*tf.nn.elu(x))
+
 def mu_law_encode_nonlinear(audio, quantization_channels=256):
     '''
     Compress the waveform amplitudes using mu-law non-linearity. 
